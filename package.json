@@ -6,7 +6,8 @@
   "scripts": {
     "serve": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "docker-build": "docker build . -t archivist",
+    "docker": "npm run docker-build; npm run docker-run",
+    "docker-build": "docker build . -t archivist --no-cache",
     "docker-run": "docker run -v ~/Archivist:/src/archiver/ -p 3001:3001 -p 3282:3282 -t archivist"
   },
   "author": "",
@@ -16,6 +17,7 @@
     "express": "^4.16.4",
     "fs-extra": "^7.0.1",
     "hypercored": "git+https://github.com/DecentricCorp/hypercored.git",
+    "hyperdrive": "git+https://github.com/DecentricCorp/hyperdrive.git",
     "melanke-watchjs": "^1.5.0"
   }
 }

@@ -4,11 +4,16 @@
   "description": "Archivist actor for Emblem Network",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker-build": "docker build . -t archivist",
+    "docker-run": "docker run -v ~/Archivist:/src/archiver/ -p 3001:3001 -p 3282:3282 -t archivist"
   },
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "dat-link-resolve": "^2.3.0",
+    "express": "^4.16.4",
     "fs-extra": "^7.0.1",
     "hypercored": "git+https://github.com/DecentricCorp/hypercored.git",
     "melanke-watchjs": "^1.5.0"

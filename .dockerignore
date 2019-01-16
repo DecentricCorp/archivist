@@ -1,0 +1,7 @@
+.git
+Dockerfile
+node_modules
+.DS_Store
+feeds
+feeds.json
+archiver

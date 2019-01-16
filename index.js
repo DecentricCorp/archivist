@@ -5,6 +5,16 @@ var os = require('os')
 var LiveFeeds = {shards: [], metadata: []}
 var WatchJS = require("melanke-watchjs")
 var runningAsScript = !module.parent
+var express = require('express')
+
+var app = express()
+app.set('json spaces', 4)
+app.use(function (req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*")
+    res.header("Access-Control-Allow-Headers", "X-Requested-From")
+    next()
+})
+
 
 function Feeds(liveFeeds){
     this.LiveFeeds = liveFeeds
@@ -21,6 +31,10 @@ Feeds.prototype.watch = function(prop,cb){
     })
 }
 var feeds = new Feeds(LiveFeeds)
+app.get('/info', (req, res)=>{
+    res.json(feeds)
+})
+app.listen(3001)
 
 function init(opts, eventHooks){
     var _opts = {
@@ -124,7 +138,6 @@ function saveArchivistFeed(type, keyHex, cb){
             }
         })
     } else {
-        console.log("Last one?")
         fs.writeFileSync(feedJsonSrc, JSON.stringify(feeds.LiveFeeds, null, 4))
         return cb(feedData)
     }

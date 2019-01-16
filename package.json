@@ -1,0 +1,16 @@
+{
+  "name": "archivist",
+  "version": "1.0.0",
+  "description": "Archivist actor for Emblem Network",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fs-extra": "^7.0.1",
+    "hypercored": "git+https://github.com/DecentricCorp/hypercored.git",
+    "melanke-watchjs": "^1.5.0"
+  }
+}

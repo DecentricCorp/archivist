@@ -13,9 +13,12 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bitcore-message": "^1.0.2",
+    "coval.js": "git+https://github.com/DecentricCorp/Coval.js.git",
     "dat-link-resolve": "^2.3.0",
     "dat-storage": "^1.1.1",
     "express": "^4.16.4",
+    "find-free-port": "^2.0.0",
     "fs-extra": "^7.0.1",
     "hypercored": "git+https://github.com/DecentricCorp/hypercored.git",
     "hyperdrive": "git+https://github.com/DecentricCorp/hyperdrive.git",

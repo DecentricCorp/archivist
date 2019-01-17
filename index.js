@@ -27,12 +27,50 @@ Feeds.prototype.watch = function(prop,cb){
                 console.log('detected change to JSON store',action, item )
             })
         }
-        console.log()
     })
 }
 var feeds = new Feeds(LiveFeeds)
 app.get('/info', (req, res)=>{
     res.json(feeds)
+})
+app.post('/add', (req, res)=>{
+    var toAdd = []
+    if (req.query.address) {
+        toAdd = [req.query.address]
+    }
+    if (req.query.addresses) {
+        toAdd = JSON.parse(req.query.addresses)        
+    }
+    toAdd.forEach((item, index)=>{
+        if(feeds.LiveFeeds.shards.includes(item)) return
+        saveArchivistFeed('add', item, ()=>{
+            if (index === toAdd.length -1) {
+                res.json({success: true})
+            }
+        })
+    })
+})
+app.post('/remove', (req, res)=>{
+    var toRemove = []
+    if (req.query.address) {
+        toRemove = [req.query.address]
+    }
+    if (req.query.addresses) {
+        toRemove = JSON.parse(req.query.addresses)        
+    }
+    toRemove.forEach((item, index)=>{
+        if(!feeds.LiveFeeds.shards.includes(item)) return
+        saveArchivistFeed('remove', item, ()=>{
+            if (index === toRemove.length -1) {
+                res.json({success: true})
+            }
+        })
+    })
+
+    //var newShards = feeds.LiveFeeds.shards.filter(shard=>{return !toRemove.includes(shard)})
+    //feeds.LiveFeeds.shards = newShards
+    
+    
 })
 app.listen(3001)
 
@@ -138,7 +176,9 @@ function saveArchivistFeed(type, keyHex, cb){
             }
         })
     } else {
-        fs.writeFileSync(feedJsonSrc, JSON.stringify(feeds.LiveFeeds, null, 4))
-        return cb(feedData)
+        fs.writeFile(feedSrc, feedData.join(os.EOL), err=>{
+            fs.writeFileSync(feedJsonSrc, JSON.stringify(feeds.LiveFeeds, null, 4))
+            return cb(feedData)
+        })        
     }
 }

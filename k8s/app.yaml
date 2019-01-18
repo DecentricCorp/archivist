@@ -30,6 +30,10 @@ items:
         labels:
           io.kompose.service: archivist
       spec:
+        volumes:
+        - name: archivist-storage
+          persistentVolumeClaim:
+            claimName: archivist-claim
         containers:
         - image: us.gcr.io/multichain-prod/archivist:v1
           imagePullPolicy: Always
@@ -37,6 +41,9 @@ items:
           ports:
           - containerPort: 3001
             protocol: TCP
+          volumeMounts:
+          - mountPath: "/src/storage"
+            name: archivist-storage
           resources: {}
           stdin: true
           terminationMessagePath: /dev/termination-log

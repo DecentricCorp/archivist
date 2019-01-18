@@ -1,4 +1,5 @@
 FROM node
 WORKDIR ./src/
-RUN npm install -g https://github.com/DecentricCorp/archivist.git
-CMD ["archivist"]
+ADD ./ ./
+RUN npm install
+CMD ["node", "cli.js"]

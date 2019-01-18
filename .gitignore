@@ -1,5 +1,5 @@
 node_modules
-feeds
-feeds.json
+storage/feeds
+storage/feeds.json
 archiver
-.secrets
+storage/.secrets

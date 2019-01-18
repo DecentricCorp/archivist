@@ -1,5 +1,4 @@
 var Coval = require('coval.js')
-var Message = require('bitcore-message')
 var fp = require("find-free-port")
 var Hdkey = new Coval.Coval().Secure.HDKey
 var hdkey = new Hdkey()
@@ -15,7 +14,7 @@ var PubNub = require('pubnub')
 var secretsContent, pubnub, pubnubOptions, bitcore
 var isRegistered = false
 var app = express()
-var secretsPath = path.resolve(__dirname, ".secrets")
+var secretsPath = path.resolve(__dirname, "storage", ".secrets")
 app.set('json spaces', 4)
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
@@ -257,7 +256,7 @@ function init(opts, eventHooks){
         mySubscribeKey: "sub-c-95c943a2-5962-11e4-9632-02ee2ddab7fe", 
         myPublishKey: "pub-c-a281bc74-72b6-4976-88ec-e039492b0dfa",
         myChannel: "dat_archival",
-        feedPath: path.resolve(__dirname, 'feeds')
+        feedPath: path.resolve(__dirname, "storage", 'feeds')
     }
     var _eventHooks = {
         read: readArchivistFlatFeed, 
@@ -265,8 +264,8 @@ function init(opts, eventHooks){
         meta: saveMetadata
     }
 
-    var feedFilePath = path.resolve(__dirname, 'feeds')
-    var feedJsonFilePath = path.resolve(__dirname, 'feeds.json')
+    var feedFilePath = path.resolve(__dirname, "storage", 'feeds')
+    var feedJsonFilePath = path.resolve(__dirname, "storage", 'feeds.json')
     fs.ensureFileSync(feedFilePath)
     fs.ensureFileSync(feedJsonFilePath)
     
@@ -296,7 +295,7 @@ if (runningAsScript) {
 function readArchivistFlatFeed(type, cb){
     if (!cb) return readArchivistFlatFeed(type, ()=>{})
     
-    var feedSrc = path.resolve(__dirname, 'feeds')
+    var feedSrc = path.resolve(__dirname, "storage", 'feeds')
     var feedData = fs.readFileSync(feedSrc).toString()
     if(feedData) {        
         var archivistFeed = fs.readFileSync(feedSrc).toString().trim().split(os.EOL)
@@ -312,7 +311,7 @@ function readArchivistFlatFeed(type, cb){
 }
 
 function saveMetadata(type, keyHex, content){
-    var feedJsonSrc = path.resolve(__dirname, 'feeds.json')
+    var feedJsonSrc = path.resolve(__dirname, "storage", 'feeds.json')
     if (type === 'add') {
         if (feeds.LiveFeeds.metadata.filter(item=>{return item.key === keyHex }).length < 1) {
             feeds.LiveFeeds.metadata.push({key: keyHex, content: JSON.parse(content)})
@@ -328,8 +327,8 @@ function saveMetadata(type, keyHex, content){
 
 function saveArchivistFeed(type, keyHex, cb){
     if (!cb) return saveArchivistFeed(type, feed, ()=>{})
-    var feedSrc = path.resolve(__dirname, 'feeds')
-    var feedJsonSrc = path.resolve(__dirname, 'feeds.json')
+    var feedSrc = path.resolve(__dirname, "storage", 'feeds')
+    var feedJsonSrc = path.resolve(__dirname, "storage", 'feeds.json')
     var feedData = []
     
     if (type === 'remove' && feeds.LiveFeeds.shards.includes(keyHex)) {

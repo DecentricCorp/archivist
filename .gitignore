@@ -1,5 +1,6 @@
 node_modules
+archiver
 storage/feeds
 storage/feeds.json
-archiver
+storage/archiver
 storage/.secrets

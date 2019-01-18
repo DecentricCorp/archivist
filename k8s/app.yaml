@@ -42,7 +42,7 @@ items:
           - containerPort: 3001
             protocol: TCP
           volumeMounts:
-          - mountPath: "/src/storage"
+          - mountPath: "/var/storage"
             name: archivist-storage
           resources: {}
           stdin: true

@@ -246,7 +246,7 @@ app.post('/remove', (req, res)=>{
         })
     })
 })
-fp(3000, function(err, freePort){
+fp(3001, function(err, freePort){
     app.listen(freePort)
     console.log('listening on port', freePort)
 })
@@ -256,7 +256,8 @@ function init(opts, eventHooks){
         mySubscribeKey: "sub-c-95c943a2-5962-11e4-9632-02ee2ddab7fe", 
         myPublishKey: "pub-c-a281bc74-72b6-4976-88ec-e039492b0dfa",
         myChannel: "dat_archival",
-        feedPath: path.resolve(__dirname, "storage", 'feeds')
+        feedPath: path.resolve(__dirname, "storage", 'feeds'),
+        cwd: path.resolve(__dirname, "storage")
     }
     var _eventHooks = {
         read: readArchivistFlatFeed, 

@@ -11,10 +11,11 @@ var WatchJS = require("melanke-watchjs")
 var runningAsScript = !module.parent
 var express = require('express')
 var PubNub = require('pubnub')
-var secretsContent, pubnub, pubnubOptions, bitcore
+var secretsContent, pubnub, pubnubOptions, bitcore, options
 var isRegistered = false
 var app = express()
 var secretsPath = path.resolve(__dirname, "storage", ".secrets")
+const util = require('util')
 app.set('json spaces', 4)
 app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*")
@@ -22,7 +23,7 @@ app.use(function (req, res, next) {
     next()
 })
 
-function preInit(){
+function preInit(opts, cb){
     
     // check for file on system
     // if no file exists create one
@@ -32,20 +33,66 @@ function preInit(){
     //      each archivist broadcasts signed key back to registrant
     //      each archivist stores known peers
 
-    secretsContent = initSecrets()
+    secretsContent = initSecrets(opts.secretsPath || secretsPath)
     isRegistered = initRegistered(secretsContent)
     console.log("Your Archivist Address is", secretsContent.address)
     console.log("Registered?", isRegistered)
+    return cb()
 }
 
-function initSecrets(){
+function init(opts, eventHooks, cb){
+    if (!eventHooks) return init(opts, {}, cb)
+    if (!opts) return init({}, eventHooks, cb)
+    if (!cb) return init(opts, eventHooks, (self)=>{
+        return self
+    })
+    var _opts = {
+        mySubscribeKey: opts.mySubscribeKey || "sub-c-95c943a2-5962-11e4-9632-02ee2ddab7fe", 
+        myPublishKey: opts.myPublishKey || "pub-c-a281bc74-72b6-4976-88ec-e039492b0dfa",
+        myChannel: opts.myChannel || "dat_archival",
+        feedPath: opts.feedPath || path.resolve(__dirname, "storage", 'feeds'),
+        jsonFeedPath: opts.jsonFeedPath || path.resolve(__dirname, "storage", 'feeds.json'),
+        secretsPath: opts.secretsPath || secretsPath,
+        cwd: opts.cwd || path.resolve(__dirname, "storage"),
+        archiverPath: opts.archiverPath || path.resolve(__dirname, "storage", "archiver")
+    }
+    options = _opts
+    var _eventHooks = {
+        read: eventHooks.read || readArchivistFlatFeed, 
+        save: eventHooks.save || saveArchivistFeed,
+        meta: eventHooks.meta || saveMetadata
+    }
+    return preInit(_opts, ()=>{        
+        secretsPath = _opts.secretsPath
+        fs.ensureFileSync(_opts.feedPath)
+        fs.ensureFileSync(_opts.jsonFeedPath)
+        
+        HypercoreDaemon.init(_eventHooks, _opts)
+        pubnub = initPubNub(_opts)
+        if (!isRegistered) {
+            return startRegistration(_opts, ()=>{
+                return cb(null, this)
+            })
+        } else {
+            readArchivistFlatFeed('open', (liveFeeds) => {
+                feeds.watch('shards', (id, oldval, newval) => {
+                    console.log(id, oldval, newval)
+                })
+            })
+        }
+        return cb(this)
+    })
+    
+}
+
+function initSecrets(secretsPath){
     bitcore = hdkey.GetBitcore()
     fs.ensureFileSync(secretsPath)
-    secretsContent = readSecrets()
+    secretsContent = readSecrets(secretsPath)
     if (secretsContent.length === 0) {        
         hdkey.StandardHDKey('0', function(address, key){
             secretsContent = {address: address, key: key}
-            saveSecrets(secretsContent)
+            saveSecrets(secretsPath, secretsContent)
         })        
     } else {
         secretsContent = JSON.parse(secretsContent)
@@ -54,11 +101,12 @@ function initSecrets(){
     return secretsContent
 }
 
-function readSecrets(){
-    return fs.readFileSync(secretsPath)
+function readSecrets(_secretsPath){
+    return fs.readFileSync(_secretsPath || secretsPath)
 }
-function saveSecrets(secretsContent){
-    fs.writeFileSync(secretsPath, JSON.stringify(secretsContent, null, 4))
+
+function saveSecrets(_secretsPath, secretsContent){
+    fs.writeFileSync(_secretsPath || secretsPath, JSON.stringify(secretsContent, null, 4))
 }
 
 function initRegistered(secretsContent){
@@ -69,7 +117,7 @@ function initRegistered(secretsContent){
     }
 }
 
-function startRegistration(){
+function startRegistration(opts, self){
     var payload = {
         type: "register",
         address: secretsContent.address,
@@ -77,12 +125,13 @@ function startRegistration(){
     }
     pubnub.publish({ 
             message: payload,
-            channel: 'dat_archival'
+            channel: options.myChannel || opts.myChannel
         }, 
         function (status) {
             //console.log("msg status", status)
         }
     )
+    return self(null, this)
 }
 
 function initPubNub(opts){
@@ -103,6 +152,8 @@ function initPubNub(opts){
                 handleRegisterMsg(payload)
             } else if(payload.type === "register-sign") {
                 handleSignedRegisterMsg(payload)
+            } else if(payload.type === "roll-call") {
+                handleRollCallMsg(payload)
             }
             
         },
@@ -114,6 +165,10 @@ function initPubNub(opts){
         channels: [pubnubOptions.myChannel || 'demo'],
     })
     return pubnub
+}
+
+function handleRollCallMsg(payload) {
+
 }
 
 function handleSignedRegisterMsg(payload){
@@ -130,7 +185,7 @@ function handleSignedRegisterMsg(payload){
             } else {
                 secretsContent.peers.push(payload.signer)
             }
-            saveSecrets(secretsContent)
+            saveSecrets(secretsPath, secretsContent)
             console.log("Saved that signer to my secrets")
         }
     } else {
@@ -146,7 +201,7 @@ function handleRegisterMsg(payload){
         var foundPeer = secretsContent.peers.filter(peer=>{return peer.address === payload.address})
         if (foundPeer.length < 1) {
             secretsContent.peers.push({address: payload.address, publicKey: payload.pubkey})
-            saveSecrets(secretsContent)
+            saveSecrets(secretsPath, secretsContent)
         }
         var signature = signString(payload.pubkey, secretsContent.key.privateKey)
         var payload = {
@@ -163,7 +218,9 @@ function handleRegisterMsg(payload){
         }
         publishToChannel(payload, status=>{
             if (secretsContent.peers.filter(peer=>{return !peer.signature}).length > 0) {
-                startRegistration()
+                startRegistration(options, ()=>{
+                    console.log("something")
+                })
             }
         })
         
@@ -172,11 +229,10 @@ function handleRegisterMsg(payload){
     }
 }
 
-
 function publishToChannel(payload, cb){
     pubnub.publish({ 
         message: payload,
-        channel: 'dat_archival'
+        channel: options.myChannel || 'dat_archival'
     }, 
     function (status) {
         return cb(status)
@@ -193,11 +249,10 @@ function verifySignature(msg, sig, pubkey){
     return verification
 }
 
-preInit()
-
 function Feeds(liveFeeds){
     this.LiveFeeds = liveFeeds
 }
+
 Feeds.prototype.watch = function(prop,cb){
     return WatchJS.watch(this.LiveFeeds, prop, (__,action,item)=>{
         if (action === 'push') {
@@ -209,8 +264,10 @@ Feeds.prototype.watch = function(prop,cb){
     })
 }
 var feeds = new Feeds(LiveFeeds)
+
 app.get('/info', (req, res)=>{
-    res.json(feeds)
+    var secretContent = JSON.parse(readSecrets())
+    res.json({feeds: feeds, secrets: secretContent})
 })
 app.post('/add', (req, res)=>{
     var toAdd = []
@@ -251,43 +308,42 @@ fp(3001, function(err, freePort){
     console.log('listening on port', freePort)
 })
 
-function init(opts, eventHooks){
-    var _opts = {
-        mySubscribeKey: "sub-c-95c943a2-5962-11e4-9632-02ee2ddab7fe", 
-        myPublishKey: "pub-c-a281bc74-72b6-4976-88ec-e039492b0dfa",
-        myChannel: "dat_archival",
-        feedPath: path.resolve(__dirname, "storage", 'feeds'),
-        cwd: path.resolve(__dirname, "storage")
-    }
-    var _eventHooks = {
-        read: readArchivistFlatFeed, 
-        save: saveArchivistFeed,
-        meta: saveMetadata
-    }
-
-    var feedFilePath = path.resolve(__dirname, "storage", 'feeds')
-    var feedJsonFilePath = path.resolve(__dirname, "storage", 'feeds.json')
-    fs.ensureFileSync(feedFilePath)
-    fs.ensureFileSync(feedJsonFilePath)
-    
-    HypercoreDaemon.init(eventHooks || _eventHooks, opts || _opts)
-    pubnub = initPubNub(_opts)
-    if (!isRegistered) {
-        return startRegistration()
-    } else {
-        readArchivistFlatFeed('open', (liveFeeds) => {
-            feeds.watch('shards', (id, oldval, newval) => {
-                console.log(id, oldval, newval)
-            })
-        })
-    }
+var initAsync = util.promisify(init)
+var ArchivistLib = {
+    preInit: preInit,
+    init: init,
+    initAsync: initAsync,
+    initSecrets: initSecrets,
+    readSecrets: readSecrets,
+    saveSecrets: saveSecrets ,
+    initRegistered: initRegistered,
+    startRegistration: startRegistration,
+    initPubNub: initPubNub,
+    handleRollCallMsg: handleRollCallMsg,
+    handleSignedRegisterMsg: handleSignedRegisterMsg,
+    handleRegisterMsg: handleRegisterMsg,
+    publishToChannel: publishToChannel,
+    signString: signString,
+    verifySignature: verifySignature,
+    app: app
 }
 
 
-module.exports = {
+
+function ArchivistClass(opts){
+    this.options = opts
+    this.feeds = feeds
+    this.init = init
+    ArchivistLib.initAsync(opts).then(instance=>{
+        return this
+    })    
+}
+/* module.exports = {
     feeds: feeds,
     init: init
-}
+} */
+
+module.exports = ArchivistClass
 
 if (runningAsScript) {
     init()
@@ -296,7 +352,7 @@ if (runningAsScript) {
 function readArchivistFlatFeed(type, cb){
     if (!cb) return readArchivistFlatFeed(type, ()=>{})
     
-    var feedSrc = path.resolve(__dirname, "storage", 'feeds')
+    var feedSrc = options.feedPath || path.resolve(__dirname, "storage", 'feeds')
     var feedData = fs.readFileSync(feedSrc).toString()
     if(feedData) {        
         var archivistFeed = fs.readFileSync(feedSrc).toString().trim().split(os.EOL)
@@ -312,7 +368,7 @@ function readArchivistFlatFeed(type, cb){
 }
 
 function saveMetadata(type, keyHex, content){
-    var feedJsonSrc = path.resolve(__dirname, "storage", 'feeds.json')
+    var feedJsonSrc = options.jsonFeedPath || path.resolve(__dirname, "storage", 'feeds.json')
     if (type === 'add') {
         if (feeds.LiveFeeds.metadata.filter(item=>{return item.key === keyHex }).length < 1) {
             feeds.LiveFeeds.metadata.push({key: keyHex, content: JSON.parse(content)})
@@ -328,8 +384,8 @@ function saveMetadata(type, keyHex, content){
 
 function saveArchivistFeed(type, keyHex, cb){
     if (!cb) return saveArchivistFeed(type, feed, ()=>{})
-    var feedSrc = path.resolve(__dirname, "storage", 'feeds')
-    var feedJsonSrc = path.resolve(__dirname, "storage", 'feeds.json')
+    var feedSrc = options.feedPath || path.resolve(__dirname, "storage", 'feeds')
+    var feedJsonSrc = options.jsonFeedPath || path.resolve(__dirname, "storage", 'feeds.json')
     var feedData = []
     
     if (type === 'remove' && feeds.LiveFeeds.shards.includes(keyHex)) {

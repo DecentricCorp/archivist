@@ -26,5 +26,11 @@
   },
   "bin": {
     "archivist": "./cli.js"
+  },
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "mocha-spawn": "^3.0.3",
+    "rewire": "^4.0.1",
+    "testdouble": "^3.9.3"
   }
 }

@@ -1,0 +1,8 @@
+{
+    "cwd": "/Users/shannoncode/repo/archivist/arc3",
+    "feedPath": "/Users/shannoncode/repo/archivist/arc3/feeds1",
+    "jsonFeedPath": "/Users/shannoncode/repo/archivist/arc3/feeds1.json",
+    "secretsPath": "/Users/shannoncode/repo/archivist/arc3/.secrets1",
+    "archiverPath": "/Users/shannoncode/repo/archivist/arc3/archiver1",
+    "myChannel": "dat_archival"
+}

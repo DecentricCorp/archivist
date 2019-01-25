@@ -1,5 +1,7 @@
 node_modules
 archiver
+storage
+.DS_Store
 storage/feeds
 storage/feeds.json
 storage/archiver

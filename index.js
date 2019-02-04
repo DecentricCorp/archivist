@@ -54,7 +54,8 @@ function init(opts, eventHooks, cb){
         jsonFeedPath: opts.jsonFeedPath || path.resolve(__dirname, "storage", 'feeds.json'),
         secretsPath: opts.secretsPath || secretsPath,
         cwd: opts.cwd || path.resolve(__dirname, "storage"),
-        archiverPath: opts.archiverPath || path.resolve(__dirname, "storage", "archiver")
+        archiverPath: opts.archiverPath || path.resolve(__dirname, "storage", "archiver"),
+        websockets: true
     }
     options = _opts
     var _eventHooks = {
